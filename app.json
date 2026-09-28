@@ -19,6 +19,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "APLIPAE usa tu ubicación para registrar la posición GPS de la intersección."
+        }
+      ]
+    ]
   }
 }
