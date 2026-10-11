@@ -61,3 +61,9 @@ export async function eliminarInterseccion(id) {
   const { doc, deleteDoc } = await import('firebase/firestore');
   await deleteDoc(doc(db, 'intersecciones', id));
 }
+
+export async function getInterseccionPorId(id) {
+  const { getDoc, doc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(db, 'intersecciones', id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}

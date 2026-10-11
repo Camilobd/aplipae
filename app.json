@@ -26,7 +26,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "APLIPAE usa tu ubicación para registrar la posición GPS de la intersección."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

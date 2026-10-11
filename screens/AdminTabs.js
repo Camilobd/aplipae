@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AforadoresListScreen from './AforadoresListScreen';
 import ZonasAforoScreen from './ZonasAforoScreen';
 import ReportesScreen from './ReportesScreen';
+import TiposVehiculoScreen from './TiposVehiculoScreen';
 import { colors } from '../styles/theme';
 
 const Tab = createBottomTabNavigator();
@@ -11,6 +12,7 @@ const ICONOS = {
   Aforadores: 'people-outline',
   ZonasAforo: 'git-network-outline',
   Reportes: 'bar-chart-outline',
+  TiposVehiculo: 'car-outline',
 };
 
 export default function AdminTabs() {
@@ -27,7 +29,8 @@ export default function AdminTabs() {
       })}
     >
       <Tab.Screen name="Aforadores" component={AforadoresListScreen} />
-      <Tab.Screen name="ZonasAforo" component={ZonasAforoScreen} options={{ tabBarLabel: 'Zonas de aforo', title: 'Zonas de aforo' }} />
+      <Tab.Screen name="ZonasAforo" component={ZonasAforoScreen} options={{ tabBarLabel: 'Zonas', title: 'Zonas de aforo' }} />
+      <Tab.Screen name="TiposVehiculo" component={TiposVehiculoScreen} options={{ tabBarLabel: 'Tipología', title: 'Tipología vehicular' }} />
       <Tab.Screen name="Reportes" component={ReportesScreen} />
     </Tab.Navigator>
   );

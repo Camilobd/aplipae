@@ -22,7 +22,7 @@ export default function PinLoginScreen({ navigation }) {
         return;
       }
 
-      Alert.alert('Bienvenido', `Hola, ${aforador.nombre}.`);
+      navigation.replace('MisTareas', { aforador });
       // Aquí, en el siguiente paso, navegamos a la pantalla de jornadas/asignaciones del aforador
     } catch (error) {
       Alert.alert('Error', 'No se pudo validar el PIN: ' + error.message);

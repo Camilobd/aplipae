@@ -7,6 +7,14 @@ import AdminTabs from './screens/AdminTabs';
 import CrearAforadorScreen from './screens/CrearAforadorScreen';
 import PinLoginScreen from './screens/PinLoginScreen';
 import CorredoresScreen from './screens/CorredoresScreen';
+import CaracterizacionScreen from './screens/CaracterizacionScreen';
+import JornadaScreen from './screens/JornadaScreen';
+import AsignacionesScreen from './screens/AsignacionesScreen';
+import MisTareasScreen from './screens/MisTareasScreen';
+import JornadasListScreen from './screens/JornadasListScreen';
+import JornadaFormScreen from './screens/JornadaFormScreen';
+
+
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +29,12 @@ export default function App() {
         <Stack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'Ingresar con PIN' }} />
         <Stack.Screen name="Corredores" component={CorredoresScreen} options={({ route }) => ({ title: route.params?.zonaAforo?.nombre || 'Corredores' })} />
         <Stack.Screen name="Intersecciones" component={IntersectionesScreen} options={({ route }) => ({ title: route.params?.corredor?.nombre || 'Intersecciones' })} />
+        <Stack.Screen name="Caracterizacion" component={CaracterizacionScreen} options={({ route }) => ({ title: route.params?.interseccion?.nombre || 'Caracterización' })} />
+        <Stack.Screen name="Jornada" component={JornadaScreen} options={({ route }) => ({ title: route.params?.interseccion?.nombre || 'Jornada' })} />
+        <Stack.Screen name="Asignaciones" component={AsignacionesScreen} options={({ route }) => ({ title: route.params?.interseccion?.nombre || 'Asignaciones' })} />
+        <Stack.Screen name="MisTareas" component={MisTareasScreen} options={{ title: 'Mis tareas' }} />
+        <Stack.Screen name="Jornadas" component={JornadasListScreen} options={({ route }) => ({ title: route.params?.interseccion?.nombre || 'Jornadas' })} />
+        <Stack.Screen name="JornadaForm" component={JornadaFormScreen} options={{ title: 'Planificar jornada' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

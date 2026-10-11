@@ -11,7 +11,7 @@ import {
   actualizarInterseccion, eliminarInterseccion,
 } from '../utils/intersecciones';
 import { styles } from './IntersectionesScreen.styles';
-import { colors } from '../styles/theme';
+import { colors, spacing } from '../styles/theme';
 
 export default function IntersectionesScreen({ route, navigation }) {
   const { corredor } = route.params;
@@ -200,11 +200,22 @@ export default function IntersectionesScreen({ route, navigation }) {
 
       <TouchableOpacity
         style={styles.botonIr}
-        onPress={() => Alert.alert('Próximamente', 'Aquí vamos a construir accesos/movimientos (HU-02b).')}
+        onPress={() => navigation.navigate('Caracterizacion', { interseccion: item })}
       >
         <Ionicons name="arrow-forward-circle-outline" size={16} color={colors.surface} />
         <Text style={styles.botonIrTexto}>Ir a caracterización</Text>
+
       </TouchableOpacity>
+
+      {item.caracterizada && (
+        <TouchableOpacity
+          style={[styles.botonIr, { backgroundColor: colors.accent, marginTop: spacing.xs }]}
+          onPress={() => navigation.navigate('Jornadas', { interseccion: item })}
+        >
+          <Ionicons name="calendar-outline" size={16} color={colors.surface} />
+          <Text style={styles.botonIrTexto}>Jornadas</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
