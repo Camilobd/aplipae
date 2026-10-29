@@ -184,7 +184,9 @@ export default function IntersectionesScreen({ route, navigation }) {
         </View>
         <View style={[styles.badge, { backgroundColor: item.caracterizada ? '#2E8B5722' : '#E67E2222' }]}>
           <Text style={[styles.badgeTexto, { color: item.caracterizada ? '#2E8B57' : colors.accent }]}>
-            {item.caracterizada ? 'Caracterizada' : 'Pendiente'}
+            {item.caracterizada
+              ? `Caracterizada · ${item.entradasCodigos?.length ?? 0} de 8 accesos`
+              : 'Pendiente'}
           </Text>
         </View>
       </View>

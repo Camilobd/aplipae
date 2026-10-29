@@ -13,6 +13,8 @@ import AsignacionesScreen from './screens/AsignacionesScreen';
 import MisTareasScreen from './screens/MisTareasScreen';
 import JornadasListScreen from './screens/JornadasListScreen';
 import JornadaFormScreen from './screens/JornadaFormScreen';
+import NotificarScreen from './screens/NotificarScreen';
+import ConteoScreen from './screens/ConteoScreen';
 
 
 
@@ -35,6 +37,9 @@ export default function App() {
         <Stack.Screen name="MisTareas" component={MisTareasScreen} options={{ title: 'Mis tareas' }} />
         <Stack.Screen name="Jornadas" component={JornadasListScreen} options={({ route }) => ({ title: route.params?.interseccion?.nombre || 'Jornadas' })} />
         <Stack.Screen name="JornadaForm" component={JornadaFormScreen} options={{ title: 'Planificar jornada' }} />
+        <Stack.Screen name="Notificar" component={NotificarScreen} options={{ title: 'Notificar aforadores' }} />
+        <Stack.Screen name="Conteo" component={ConteoScreen} options={{ title: 'Conteo' }} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

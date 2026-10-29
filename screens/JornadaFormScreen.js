@@ -67,6 +67,8 @@ export default function JornadaFormScreen({ route, navigation }) {
         throw new Error('Ese horario ya terminó. Elige una fecha y hora futuras.');
       }
 
+      let jornadaNuevaId = null;
+
       if (esEdicion) {
         await actualizarHorarioJornada(jornada, inicio, fin);
       } else {
@@ -76,22 +78,31 @@ export default function JornadaFormScreen({ route, navigation }) {
           fin,
           tiposSeleccionados: plantilla?.tiposSeleccionados ?? null,
         });
+        jornadaNuevaId = nueva.id;
 
         if (plantilla) {
           const asignaciones = await getAsignacionesDeJornada(plantilla.id);
           await Promise.all(
-            asignaciones.map((a) =>
-              asignarAforador({
-                jornadaId: nueva.id,
-                movimientoId: a.movimientoId,
-                aforadorId: a.aforadorId,
-                tiposAsignados: a.tiposAsignados ?? [],
-              })
-            )
+            asignaciones
+              .filter((a) => a.trayectoriaId)
+              .map((a) =>
+                asignarAforador({
+                  jornadaId: nueva.id,
+                  trayectoriaId: a.trayectoriaId,
+                  aforadorId: a.aforadorId,
+                  tiposAsignados: a.tiposAsignados ?? [],
+                })
+              )
           );
         }
       }
-      navigation.goBack();
+
+      if (jornadaNuevaId) {
+        // Una jornada nueva abre su detalle, donde está el botón para asignar aforadores
+        navigation.replace('Jornada', { interseccion, jornadaId: jornadaNuevaId });
+      } else {
+        navigation.goBack();
+      }
     } catch (error) {
       Alert.alert('No se pudo guardar', error.message);
     } finally {

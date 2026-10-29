@@ -4,27 +4,32 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getAccesos } from '../utils/accesos';
-import { getMovimientosDeAccesos } from '../utils/movimientos';
+import { getTrayectoriasDeInterseccion } from '../utils/trayectorias';
 import { getAforadores } from '../utils/aforadores';
 import { getTiposVehiculo } from '../utils/tiposVehiculo';
 import {
   getAsignacionesDeJornada, asignarAforador, actualizarAsignacion, quitarAsignacion, reasignarAforador,
 } from '../utils/asignaciones';
+import {
+  ACCESOS, nombreAcceso, ordenarTrayectorias, tituloTrayectoria, textoSalidas,
+  codigoTrayectoria, tieneRetorno,
+} from '../constants/rilsa';
 import { styles } from './AsignacionesScreen.styles';
-import { colors } from '../styles/theme';
+import { colors, spacing, radius } from '../styles/theme';
+
+const descripcionTray = (t) => `${nombreAcceso(t.origenCodigo)} → ${textoSalidas(t)}`;
 
 export default function AsignacionesScreen({ route, navigation }) {
   const { interseccion, jornada } = route.params;
 
   const [cargando, setCargando] = useState(true);
-  const [accesos, setAccesos] = useState([]);
-  const [movimientos, setMovimientos] = useState([]);
+  const [trayectorias, setTrayectorias] = useState([]);
   const [aforadores, setAforadores] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
 
-  const [modalMovimiento, setModalMovimiento] = useState(null);
+  // objetivo: { trayectorias: [...], masivo: boolean, titulo: string } | null
+  const [objetivo, setObjetivo] = useState(null);
   // config: { [aforadorId]: { tipos: [codigos], asignacionId: id|null } }
   const [config, setConfig] = useState({});
   const [reemplazando, setReemplazando] = useState(null); // aforadorId que se está reemplazando
@@ -32,16 +37,13 @@ export default function AsignacionesScreen({ route, navigation }) {
 
   const cargar = async () => {
     setCargando(true);
-    const accesosLista = await getAccesos(interseccion.id);
-    const accesoIds = accesosLista.map((a) => a.id);
-    const [movimientosLista, aforadoresLista, asignacionesLista, catalogoLista] = await Promise.all([
-      getMovimientosDeAccesos(accesoIds),
+    const [trayectoriasLista, aforadoresLista, asignacionesLista, catalogoLista] = await Promise.all([
+      getTrayectoriasDeInterseccion(interseccion.id),
       getAforadores(),
       getAsignacionesDeJornada(jornada.id),
       getTiposVehiculo(),
     ]);
-    setAccesos(accesosLista);
-    setMovimientos(movimientosLista.filter((m) => m.activo));
+    setTrayectorias(ordenarTrayectorias(trayectoriasLista));
     setAforadores(aforadoresLista.filter((a) => a.activo));
     setAsignaciones(asignacionesLista);
     setCatalogo(catalogoLista);
@@ -57,7 +59,6 @@ export default function AsignacionesScreen({ route, navigation }) {
   );
   const grupos = [...new Set(universo.map((t) => t.grupo))];
 
-  // Textos legibles: nombre y código
   const etiquetaTipo = (codigo) => {
     const t = catalogo.find((x) => x.codigo === codigo);
     return t ? `${t.nombre} (${t.codigo})` : codigo;
@@ -66,27 +67,30 @@ export default function AsignacionesScreen({ route, navigation }) {
 
   const nombreAforador = (id) => aforadores.find((a) => a.id === id)?.nombre || 'el aforador';
   const primerNombre = (id) => nombreAforador(id).split(' ')[0];
-  const asignadosDe = (movimientoId) => asignaciones.filter((a) => a.movimientoId === movimientoId);
+  const asignadosDe = (trayectoriaId) => asignaciones.filter((a) => a.trayectoriaId === trayectoriaId);
 
-  const sinCubrirDe = (movimientoId) => {
-    const asigs = asignadosDe(movimientoId);
+  const sinCubrirDe = (trayectoriaId) => {
+    const asigs = asignadosDe(trayectoriaId);
     if (asigs.length === 0) return [];
     const cubiertos = new Set(asigs.flatMap((a) => a.tiposAsignados || []));
     return universo.filter((t) => !cubiertos.has(t.codigo)).map((t) => t.codigo);
   };
 
-  const abrirModal = (movimiento) => {
+  const abrirModal = (lista, masivo, titulo) => {
     const inicial = {};
-    asignadosDe(movimiento.id).forEach((a) => {
-      inicial[a.aforadorId] = { tipos: a.tiposAsignados || [], asignacionId: a.id };
-    });
+    if (!masivo) {
+      asignadosDe(lista[0].id).forEach((a) => {
+        inicial[a.aforadorId] = { tipos: a.tiposAsignados || [], asignacionId: a.id };
+      });
+    }
+    // En modo masivo se parte vacío: lo que se guarde reemplaza lo asignado en esas trayectorias
     setConfig(inicial);
     setReemplazando(null);
-    setModalMovimiento(movimiento);
+    setObjetivo({ trayectorias: lista, masivo, titulo });
   };
 
   const cerrarModal = () => {
-    setModalMovimiento(null);
+    setObjetivo(null);
     setReemplazando(null);
   };
 
@@ -154,29 +158,32 @@ export default function AsignacionesScreen({ route, navigation }) {
   const persistir = async () => {
     setGuardando(true);
     try {
-      const existentes = asignadosDe(modalMovimiento.id);
       const operaciones = [];
 
-      idsConfig.forEach((aforadorId) => {
-        const c = config[aforadorId];
-        const existente = existentes.find((a) => a.aforadorId === aforadorId);
-        if (existente) {
-          operaciones.push(actualizarAsignacion(existente.id, { tiposAsignados: c.tipos }));
-        } else {
-          operaciones.push(
-            asignarAforador({
-              jornadaId: jornada.id,
-              movimientoId: modalMovimiento.id,
-              aforadorId,
-              tiposAsignados: c.tipos,
-            })
-          );
-        }
-      });
+      objetivo.trayectorias.forEach((t) => {
+        const existentes = asignadosDe(t.id);
 
-      existentes
-        .filter((a) => !idsConfig.includes(a.aforadorId))
-        .forEach((a) => operaciones.push(quitarAsignacion(a.id)));
+        idsConfig.forEach((aforadorId) => {
+          const c = config[aforadorId];
+          const existente = existentes.find((a) => a.aforadorId === aforadorId);
+          if (existente) {
+            operaciones.push(actualizarAsignacion(existente.id, { tiposAsignados: c.tipos }));
+          } else {
+            operaciones.push(
+              asignarAforador({
+                jornadaId: jornada.id,
+                trayectoriaId: t.id,
+                aforadorId,
+                tiposAsignados: c.tipos,
+              })
+            );
+          }
+        });
+
+        existentes
+          .filter((a) => !idsConfig.includes(a.aforadorId))
+          .forEach((a) => operaciones.push(quitarAsignacion(a.id)));
+      });
 
       await Promise.all(operaciones);
       cerrarModal();
@@ -189,11 +196,22 @@ export default function AsignacionesScreen({ route, navigation }) {
   };
 
   const guardar = () => {
+    if (objetivo.masivo && idsConfig.length === 0) {
+      Alert.alert(
+        'Quitar asignaciones',
+        `Se quitarán todos los aforadores de las ${objetivo.trayectorias.length} trayectorias de esta entrada. ¿Continuar?`,
+        [
+          { text: 'Volver', style: 'cancel' },
+          { text: 'Quitar', style: 'destructive', onPress: persistir },
+        ]
+      );
+      return;
+    }
     const sinTipos = idsConfig.find((id) => config[id].tipos.length === 0);
     if (sinTipos) {
       Alert.alert(
         'Falta asignar tipos',
-        `${nombreAforador(sinTipos)} no tiene tipos asignados. Dale al menos uno o quítalo del movimiento.`
+        `${nombreAforador(sinTipos)} no tiene tipos asignados. Dale al menos uno o quítalo de la trayectoria.`
       );
       return;
     }
@@ -251,39 +269,58 @@ export default function AsignacionesScreen({ route, navigation }) {
     );
   }
 
-  if (movimientos.length === 0) {
+  if (trayectorias.length === 0) {
     return (
       <View style={styles.raiz}>
         <Text style={styles.vacio}>
-          Esta intersección no tiene movimientos activos. Revisa la caracterización (HU-02b).
+          Esta intersección no tiene trayectorias definidas. Revisa la caracterización.
         </Text>
       </View>
     );
   }
 
   const candidatos = aforadores.filter((a) => !config[a.id]);
+  const origenes = ACCESOS.filter((a) => trayectorias.some((t) => t.origenCodigo === a.codigo));
 
   return (
     <View style={styles.raiz}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.subtitulo}>
-          Toca el ícono junto a cada movimiento para asignar aforadores y los tipos de vehículo que cuenta cada uno.
+          Asigna aforadores a cada trayectoria y los tipos de vehículo que cuenta cada uno. Con el botón de cada entrada puedes aplicarlo a todas sus trayectorias de una vez.
         </Text>
 
-        {accesos.map((acceso) => {
-          const movsDeAcceso = movimientos.filter((m) => m.accesoId === acceso.id);
-          if (movsDeAcceso.length === 0) return null;
+        {origenes.map(({ nombre, codigo }) => {
+          const delOrigen = trayectorias.filter((t) => t.origenCodigo === codigo);
           return (
-            <View key={acceso.id} style={styles.tarjetaAcceso}>
-              <Text style={styles.tarjetaTitulo}>Acceso {acceso.orientacion}</Text>
-              {movsDeAcceso.map((mov) => {
-                const asigs = asignadosDe(mov.id);
-                const faltan = sinCubrirDe(mov.id);
+            <View key={codigo} style={styles.tarjetaAcceso}>
+              <Text style={styles.tarjetaTitulo}>Entra por {nombre} ({codigo})</Text>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6,
+                  paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill,
+                  backgroundColor: colors.primary + '18', marginBottom: spacing.xs,
+                }}
+                onPress={() => abrirModal(delOrigen, true, `Todas las de ${nombre} (${delOrigen.length})`)}
+              >
+                <Ionicons name="people-outline" size={14} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>
+                  Asignar a todas las trayectorias
+                </Text>
+              </TouchableOpacity>
+
+              {delOrigen.map((t) => {
+                const asigs = asignadosDe(t.id);
+                const faltan = sinCubrirDe(t.id);
                 return (
-                  <View key={mov.id} style={styles.movFila}>
+                  <View key={t.id} style={styles.movFila}>
                     <View style={styles.movInfo}>
-                      <Text style={styles.movTexto}>{mov.nombre}</Text>
-                      <Text style={styles.movCodigo}>{mov.codigo}</Text>
+                      <Text style={styles.movTexto}>
+                        {tituloTrayectoria(t)}: {descripcionTray(t)}
+                      </Text>
+                      <Text style={styles.movCodigo}>
+                        {codigoTrayectoria(t)}{tieneRetorno(t) ? ' · incluye retorno' : ''}
+                      </Text>
 
                       {asigs.length === 0 ? (
                         <Text style={styles.sinAforador}>Sin aforador asignado</Text>
@@ -302,7 +339,10 @@ export default function AsignacionesScreen({ route, navigation }) {
                         <Text style={styles.advertencia}>⚠ Sin cubrir: {etiquetasTipos(faltan)}</Text>
                       )}
                     </View>
-                    <TouchableOpacity style={styles.botonAsignar} onPress={() => abrirModal(mov)}>
+                    <TouchableOpacity
+                      style={styles.botonAsignar}
+                      onPress={() => abrirModal([t], false, `${tituloTrayectoria(t)} · ${codigoTrayectoria(t)}`)}
+                    >
                       <Ionicons name="person-add-outline" size={20} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
@@ -313,7 +353,7 @@ export default function AsignacionesScreen({ route, navigation }) {
         })}
       </ScrollView>
 
-      <Modal visible={!!modalMovimiento} animationType="slide" transparent>
+      <Modal visible={!!objetivo} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={styles.modalCaja}>
             {reemplazando ? (
@@ -341,10 +381,12 @@ export default function AsignacionesScreen({ route, navigation }) {
               </>
             ) : (
               <>
-                <Text style={styles.modalTitulo}>
-                  {modalMovimiento?.nombre} ({modalMovimiento?.codigo})
+                <Text style={styles.modalTitulo}>{objetivo?.titulo}</Text>
+                <Text style={styles.modalSubtitulo}>
+                  {objetivo?.masivo
+                    ? `Se aplica a las ${objetivo.trayectorias.length} trayectorias y reemplaza lo que ya tengan asignado`
+                    : 'Elige aforadores y los tipos que cuenta cada uno'}
                 </Text>
-                <Text style={styles.modalSubtitulo}>Elige aforadores y los tipos que cuenta cada uno</Text>
 
                 <TouchableOpacity style={styles.botonNuevoAforador} onPress={irACrearAforador}>
                   <Ionicons name="person-add" size={16} color={colors.surface} />

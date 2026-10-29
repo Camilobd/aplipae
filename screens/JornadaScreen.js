@@ -200,7 +200,14 @@ export default function JornadaScreen({ route, navigation }) {
                 style={styles.botonSecundario}
                 onPress={() => navigation.navigate('Asignaciones', { interseccion, jornada })}
               >
-                <Text style={styles.botonSecundarioTexto}>Asignar aforadores a movimientos</Text>
+                <Text style={styles.botonSecundarioTexto}>Asignar aforadores a trayectorias</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.botonSecundario}
+                onPress={() => navigation.navigate('Notificar', { interseccion, jornada })}
+              >
+                <Text style={styles.botonSecundarioTexto}>Notificar aforadores</Text>
               </TouchableOpacity>
             </>
           )}
@@ -231,11 +238,9 @@ export default function JornadaScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
 
-
           <TouchableOpacity style={styles.botonPeligro} onPress={eliminar}>
             <Text style={styles.botonPeligroTexto}>Eliminar jornada</Text>
           </TouchableOpacity>
-
         </>
       )}
 

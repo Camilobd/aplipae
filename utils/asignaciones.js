@@ -1,7 +1,6 @@
 import { collection, addDoc, getDocs, query, where, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { getMovimientoPorId } from './movimientos';
-import { getAccesoPorId } from './accesos';
+import { getTrayectoriaPorId } from './trayectorias';
 import { getInterseccionPorId } from './intersecciones';
 import { getJornadaPorId, estadoJornada } from './jornadas';
 
@@ -11,10 +10,27 @@ export async function getAsignacionesDeJornada(jornadaId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function asignarAforador({ jornadaId, movimientoId, aforadorId, tiposAsignados }) {
+// Asignaciones de cualquier jornada que usan alguna de estas trayectorias
+export async function getAsignacionesDeTrayectorias(trayectoriaIds) {
+  if (trayectoriaIds.length === 0) return [];
+  const bloques = [];
+  for (let i = 0; i < trayectoriaIds.length; i += 10) {
+    bloques.push(trayectoriaIds.slice(i, i + 10));
+  }
+  const resultados = await Promise.all(
+    bloques.map(async (bloque) => {
+      const q = query(collection(db, 'asignaciones'), where('trayectoriaId', 'in', bloque));
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    })
+  );
+  return resultados.flat();
+}
+
+export async function asignarAforador({ jornadaId, trayectoriaId, aforadorId, tiposAsignados }) {
   const docRef = await addDoc(collection(db, 'asignaciones'), {
     jornadaId,
-    movimientoId,
+    trayectoriaId,
     aforadorId,
     tiposAsignados: tiposAsignados ?? [],
     fechaAsignacion: new Date().toISOString(),
@@ -30,12 +46,12 @@ export async function quitarAsignacion(id) {
   await deleteDoc(doc(db, 'asignaciones', id));
 }
 
-// El nuevo aforador hereda los tipos de vehículo de la asignación
+// El nuevo aforador hereda los tipos de vehículo de la asignación (RN-3)
 export async function reasignarAforador(asignacion, nuevoAforadorId) {
   await addDoc(collection(db, 'historialAsignaciones'), {
     asignacionId: asignacion.id,
     jornadaId: asignacion.jornadaId,
-    movimientoId: asignacion.movimientoId,
+    trayectoriaId: asignacion.trayectoriaId,
     aforadorAnteriorId: asignacion.aforadorId,
     aforadorNuevoId: nuevoAforadorId,
     tiposAsignados: asignacion.tiposAsignados ?? [],
@@ -51,20 +67,19 @@ export async function getMisTareas(aforadorId) {
 
   const tareas = await Promise.all(
     asignaciones.map(async (asig) => {
+      if (!asig.trayectoriaId) return null; // asignaciones del modelo anterior (por movimiento)
+
       const jornada = await getJornadaPorId(asig.jornadaId);
-      if (!jornada?.fechaInicio?.toDate) return null; // jornadas del modelo anterior
+      if (!jornada?.fechaInicio?.toDate) return null;
       if (estadoJornada(jornada) === 'cerrada') return null;
 
-      const movimiento = await getMovimientoPorId(asig.movimientoId);
-      if (!movimiento) return null;
+      const trayectoria = await getTrayectoriaPorId(asig.trayectoriaId);
+      if (!trayectoria) return null;
 
-      const acceso = await getAccesoPorId(movimiento.accesoId);
-      if (!acceso) return null;
-
-      const interseccion = await getInterseccionPorId(acceso.interseccionId);
+      const interseccion = await getInterseccionPorId(trayectoria.interseccionId);
       if (!interseccion) return null;
 
-      return { asignacionId: asig.id, asignacion: asig, jornada, movimiento, acceso, interseccion };
+      return { asignacionId: asig.id, asignacion: asig, jornada, trayectoria, interseccion };
     })
   );
 
