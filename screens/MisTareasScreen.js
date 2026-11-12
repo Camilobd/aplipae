@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useLayoutEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { formatoRango, formatoFecha, formatoHora } from '../utils/fechas';
 import { contarPendientesAforador } from '../utils/conteoLocal';
 import { sincronizarTodo } from '../utils/conteoSync';
 import { nombreAcceso, tituloTrayectoria, textoSalidas } from '../constants/rilsa';
+import BotonCerrarSesion from '../components/BotonCerrarSesion';
 import useAhora from '../hooks/useAhora';
 import { styles } from './MisTareasScreen.styles';
 import { colors } from '../styles/theme';
@@ -51,6 +52,15 @@ export default function MisTareasScreen({ route, navigation }) {
   const [cargando, setCargando] = useState(true);
   const [pendientes, setPendientes] = useState(0);
   const [sincronizando, setSincronizando] = useState(false);
+
+  // La salida es el botón del encabezado: sin botón de volver, para que cerrar sesión sea deliberado
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false,
+      gestureEnabled: false,
+      headerRight: () => <BotonCerrarSesion aforadorId={aforador.id} />,
+    });
+  }, [navigation, aforador.id]);
 
   const actualizarPendientes = async () => {
     try {

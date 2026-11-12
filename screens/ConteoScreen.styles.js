@@ -63,14 +63,16 @@ export const styles = StyleSheet.create({
   },
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   botonTipo: {
-    width: '48%', minHeight: 92, backgroundColor: colors.surface,
+    width: '48%', minHeight: 108, backgroundColor: colors.surface,
     borderRadius: radius.md, borderWidth: 2, borderColor: colors.primary,
     padding: spacing.sm, justifyContent: 'space-between',
   },
   botonTipoBloqueado: { opacity: 0.4 },
-  tipoCodigo: { fontSize: 11, fontWeight: '800', color: colors.accent },
-  tipoNombre: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tipoConteo: { fontSize: 24, fontWeight: '800', color: colors.primary, alignSelf: 'flex-end' },
+  tipoCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  tipoCodigo: { fontSize: 12, fontWeight: '800', color: colors.accent },
+  tipoPie: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6, marginTop: 4 },
+  tipoNombre: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.text },
+  tipoConteo: { fontSize: 26, fontWeight: '800', color: colors.primary },
 
   // Pie: deshacer
   pie: {
@@ -93,6 +95,7 @@ export const styles = StyleSheet.create({
     maxHeight: '80%', backgroundColor: colors.surface,
     borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.lg,
   },
+  panelIcono: { alignItems: 'center', marginBottom: 6 },
   panelTitulo: { ...typography.label, fontSize: 16, color: colors.primary, textAlign: 'center' },
   panelSub: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.md },
   botonSalida: {

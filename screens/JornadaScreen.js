@@ -5,10 +5,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  getJornadaPorId, estadoJornada, abrirJornadaAhora, cerrarJornadaAhora,
-  extenderJornada, actualizarTiposJornada, eliminarJornada,
+  getJornadaPorId, estadoJornada, abrirJornadaAhora, cerrarJornadaAhora, extenderJornada,
+  actualizarTiposJornada, resumenConteosDeJornada, eliminarJornadaConDatos,
 } from '../utils/jornadas';
-import { getAsignacionesDeJornada, quitarAsignacion } from '../utils/asignaciones';
 import { getTiposVehiculo } from '../utils/tiposVehiculo';
 import { formatoRango } from '../utils/fechas';
 import useAhora from '../hooks/useAhora';
@@ -83,26 +82,59 @@ export default function JornadaScreen({ route, navigation }) {
       { cancelable: true }
     );
 
-  const eliminar = () =>
-    Alert.alert('Eliminar jornada', '¿Eliminar esta jornada y sus asignaciones? No se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          setProcesando(true);
-          try {
-            const asignaciones = await getAsignacionesDeJornada(jornada.id);
-            await Promise.all(asignaciones.map((a) => quitarAsignacion(a.id)));
-            await eliminarJornada(jornada.id);
-            navigation.goBack();
-          } catch (error) {
-            setProcesando(false);
-            Alert.alert('Error', error.message);
-          }
+  // Borrado protegido: si la jornada ya tiene conteos, pide dos confirmaciones y dice cuánto se pierde
+  const eliminar = async () => {
+    setProcesando(true);
+    let resumen;
+    try {
+      resumen = await resumenConteosDeJornada(jornada.id);
+    } catch (error) {
+      setProcesando(false);
+      Alert.alert('No se pudo revisar la jornada', error.message);
+      return;
+    }
+    setProcesando(false);
+
+    const borrar = async () => {
+      setProcesando(true);
+      try {
+        await eliminarJornadaConDatos(jornada.id);
+        navigation.goBack();
+      } catch (error) {
+        setProcesando(false);
+        Alert.alert('No se pudo eliminar', error.message);
+      }
+    };
+
+    if (resumen.lotes === 0) {
+      Alert.alert('Eliminar jornada', '¿Eliminar esta jornada y sus asignaciones? No se puede deshacer.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: borrar },
+      ]);
+      return;
+    }
+
+    Alert.alert(
+      'Esta jornada tiene conteos',
+      `Hay ${resumen.vehiculos} vehículos contados por ${resumen.aforadores} aforador(es). Si la eliminas, se borran también esos conteos. Antes puedes exportar el reporte desde la pestaña Reportes.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert(
+              '¿Eliminar definitivamente?',
+              'Se borrarán la jornada, sus asignaciones y TODOS sus conteos. No hay forma de recuperarlos.',
+              [
+                { text: 'No, conservar', style: 'cancel' },
+                { text: 'Eliminar definitivamente', style: 'destructive', onPress: borrar },
+              ]
+            ),
         },
-      },
-    ]);
+      ]
+    );
+  };
 
   const tiposActuales = jornada?.tiposSeleccionados || tipos.map((t) => t.codigo);
 

@@ -78,3 +78,35 @@ export async function actualizarTiposJornada(jornadaId, codigosTipos) {
 export async function eliminarJornada(id) {
   await deleteDoc(doc(db, 'jornadas', id));
 }
+
+/* ---------- Borrado protegido ---------- */
+
+// Cuánto se ha contado en la jornada (lo que ya llegó a la nube)
+export async function resumenConteosDeJornada(jornadaId) {
+  const snap = await getDocs(query(collection(db, 'conteos'), where('jornadaId', '==', jornadaId)));
+  let vehiculos = 0;
+  const aforadores = new Set();
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    aforadores.add(data.aforadorId);
+    (data.registros || []).forEach((r) => {
+      if (r.x !== 1) vehiculos += 1; // los anulados no cuentan
+    });
+  });
+  return { vehiculos, aforadores: aforadores.size, lotes: snap.size };
+}
+
+async function borrarPorJornada(coleccion, jornadaId) {
+  const snap = await getDocs(query(collection(db, coleccion), where('jornadaId', '==', jornadaId)));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+// Borra la jornada y todo lo que cuelga de ella. La jornada se elimina al final:
+// si algo falla a medio camino, sigue existiendo y se puede reintentar.
+export async function eliminarJornadaConDatos(jornadaId) {
+  const colecciones = ['conteos', 'sesionesConteo', 'asignaciones', 'historialAsignaciones', 'notificaciones'];
+  for (const coleccion of colecciones) {
+    await borrarPorJornada(coleccion, jornadaId);
+  }
+  await deleteDoc(doc(db, 'jornadas', jornadaId));
+}

@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, Pressable, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -17,13 +18,16 @@ import { formatoDuracion, formatoHora } from '../utils/fechas';
 import {
   nombreAcceso, ordenAcceso, salidasDe, tituloTrayectoria, textoSalidas,
 } from '../constants/rilsa';
+import IconoTipo from '../components/IconoTipo';
 import useAhora from '../hooks/useAhora';
 import { styles } from './ConteoScreen.styles';
-import { colors } from '../styles/theme';
+import { colors, spacing } from '../styles/theme';
 
 export default function ConteoScreen({ route }) {
   const { aforador, jornada, interseccion, entrada, tareas, catalogo } = route.params;
   const ahora = useAhora();
+  // Espacio que ocupa la barra del sistema (botones o línea de gestos) en la parte de abajo
+  const insets = useSafeAreaInsets();
 
   const trayectoriaIds = useMemo(() => tareas.map((t) => t.trayectoria.id), [tareas]);
 
@@ -410,6 +414,7 @@ export default function ConteoScreen({ route }) {
   }
 
   const restanteMin = Math.max(1, Math.ceil((finMs - ahora.getTime()) / 60000));
+  const tipoPendiente = pendienteTipo ? tipos.find((t) => t.codigo === pendienteTipo) : null;
 
   let colorSync = '#2E8B57';
   let textoSync = 'Sincronizado';
@@ -490,9 +495,14 @@ export default function ConteoScreen({ route }) {
                     disabled={finalizada}
                     onPress={() => alTocarTipo(t.codigo)}
                   >
-                    <Text style={styles.tipoCodigo}>{t.codigo}</Text>
-                    <Text style={styles.tipoNombre} numberOfLines={2}>{t.nombre}</Text>
-                    <Text style={styles.tipoConteo}>{totales.porTipo[t.codigo] || 0}</Text>
+                    <View style={styles.tipoCabecera}>
+                      <IconoTipo codigo={t.codigo} grupo={t.grupo} tamano={26} />
+                      <Text style={styles.tipoCodigo}>{t.codigo}</Text>
+                    </View>
+                    <View style={styles.tipoPie}>
+                      <Text style={styles.tipoNombre} numberOfLines={2}>{t.nombre}</Text>
+                      <Text style={styles.tipoConteo}>{totales.porTipo[t.codigo] || 0}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
             </View>
@@ -500,7 +510,7 @@ export default function ConteoScreen({ route }) {
         ))}
       </ScrollView>
 
-      <View style={styles.pie}>
+      <View style={[styles.pie, { paddingBottom: spacing.md + insets.bottom }]}>
         <TouchableOpacity
           style={[styles.botonDeshacer, (!ultimo || finalizada) && styles.botonDeshacerDeshabilitado]}
           disabled={!ultimo || finalizada}
@@ -521,7 +531,12 @@ export default function ConteoScreen({ route }) {
       {pendienteTipo && (
         <View style={styles.capa}>
           <Pressable style={styles.fondoCapa} onPress={() => setPendienteTipo(null)} />
-          <View style={styles.panelSalida}>
+          <View style={[styles.panelSalida, { paddingBottom: spacing.lg + insets.bottom }]}>
+            {tipoPendiente && (
+              <View style={styles.panelIcono}>
+                <IconoTipo codigo={tipoPendiente.codigo} grupo={tipoPendiente.grupo} tamano={30} />
+              </View>
+            )}
             <Text style={styles.panelTitulo}>¿Por dónde salió?</Text>
             <Text style={styles.panelSub}>{nombreTipo(pendienteTipo)}</Text>
             <ScrollView>

@@ -1,5 +1,5 @@
 import {
-  collection, addDoc, query, where, getDocs, serverTimestamp, doc, updateDoc, orderBy,
+  collection, addDoc, query, where, getDocs, getDoc, serverTimestamp, doc, updateDoc, orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { enviarPinPorCorreo } from './email';
@@ -75,4 +75,37 @@ export async function desactivarAforador(id) {
 
 export async function reactivarAforador(id) {
   await updateDoc(doc(db, 'aforadores', id), { activo: true });
+}
+
+// Envía el PIN actual al correo registrado. Lee los datos frescos de la nube.
+// Si el correo falla, devuelve el PIN para entregarlo a mano (HU-25, CA3).
+export async function reenviarPin(aforador) {
+  const snap = await getDoc(doc(db, 'aforadores', aforador.id));
+  if (!snap.exists()) throw new Error('El aforador ya no existe.');
+  const { pin, email, nombre } = snap.data();
+  try {
+    await enviarPinPorCorreo(email, nombre, pin);
+    return { pin, correoEnviado: true };
+  } catch (error) {
+    return { pin, correoEnviado: false, errorCorreo: error.message };
+  }
+}
+
+// Genera un PIN nuevo: el anterior deja de funcionar en el acto (HU-24 CA3, HU-25 CA4)
+export async function generarNuevoPin(aforador) {
+  const snap = await getDoc(doc(db, 'aforadores', aforador.id));
+  if (!snap.exists()) throw new Error('El aforador ya no existe.');
+  const { pin: anterior, email, nombre } = snap.data();
+
+  let pin = generarPin();
+  while (pin === anterior) pin = generarPin();
+
+  await updateDoc(doc(db, 'aforadores', aforador.id), { pin, pinActualizadoEn: serverTimestamp() });
+
+  try {
+    await enviarPinPorCorreo(email, nombre, pin);
+    return { pin, correoEnviado: true };
+  } catch (error) {
+    return { pin, correoEnviado: false, errorCorreo: error.message };
+  }
 }

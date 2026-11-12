@@ -4,6 +4,7 @@ import AforadoresListScreen from './AforadoresListScreen';
 import ZonasAforoScreen from './ZonasAforoScreen';
 import ReportesScreen from './ReportesScreen';
 import TiposVehiculoScreen from './TiposVehiculoScreen';
+import BotonCerrarSesion from '../components/BotonCerrarSesion';
 import { colors } from '../styles/theme';
 
 const Tab = createBottomTabNavigator();
@@ -20,6 +21,8 @@ export default function AdminTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: true,
+        headerRight: () => <BotonCerrarSesion />,
+        headerRightContainerStyle: { paddingRight: 8 },
         tabBarIcon: ({ color, size }) => (
           <Ionicons name={ICONOS[route.name]} size={size} color={color} />
         ),
